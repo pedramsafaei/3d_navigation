@@ -44,7 +44,8 @@ PLUGINLIB_DECLARE_CLASS(pose_follower_3d, PoseFollower3D, pose_follower_3d::Pose
 namespace pose_follower_3d
 {
 
-PoseFollower3D::PoseFollower3D(): costmap_ros_(NULL),
+// BUG FIX: Replace NULL with nullptr for modern C++ compliance
+PoseFollower3D::PoseFollower3D(): costmap_ros_(nullptr),
                                   collisions_received_(false)
 {}
 
@@ -65,7 +66,8 @@ void PoseFollower3D::initialize(std::string name, tf::TransformListener* tf, cos
 
   // This reaching into the global planner is a hack to work around
   // the design of MoveBase in groovy.
-  if( SBPLLatticePlannerLayer3D::getInstance() != NULL )
+  // BUG FIX: Replace NULL with nullptr for modern C++ compliance
+  if( SBPLLatticePlannerLayer3D::getInstance() != nullptr )
   {
     SBPLLatticePlannerLayer3D::getInstance()->setControllerCostmap( costmap_ros_ );
     planning_scene_monitor_ = SBPLLatticePlannerLayer3D::getInstance()->getPlanningSceneMonitor();
