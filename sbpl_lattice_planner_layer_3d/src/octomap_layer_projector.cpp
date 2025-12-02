@@ -261,8 +261,8 @@ void OctomapLayerProjector::insertCloudCallback( const sensor_msgs::PointCloud2:
           extract.filter(cloud_out);
           pc_nonground +=cloud_out;
           // debug
-//						pcl::PCDWriter writer;
-//						writer.write<pcl::PointXYZ>("nonground_plane.pcd",cloud_out, false);
+//                                              pcl::PCDWriter writer;
+//                                              writer.write<pcl::PointXYZ>("nonground_plane.pcd",cloud_out, false);
 
           // remove current plane from scan for next iteration:
           // workaround for PCL bug:
@@ -292,11 +292,11 @@ void OctomapLayerProjector::insertCloudCallback( const sensor_msgs::PointCloud2:
       }
 
       // debug:
-//				pcl::PCDWriter writer;
-//				if (pc_ground.size() > 0)
-//					writer.write<pcl::PointXYZ>("ground.pcd",pc_ground, false);
-//				if (pc_nonground.size() > 0)
-//					writer.write<pcl::PointXYZ>("nonground.pcd",pc_nonground, false);
+//                              pcl::PCDWriter writer;
+//                              if (pc_ground.size() > 0)
+//                                      writer.write<pcl::PointXYZ>("ground.pcd",pc_ground, false);
+//                              if (pc_nonground.size() > 0)
+//                                      writer.write<pcl::PointXYZ>("nonground.pcd",pc_nonground, false);
 
     }
   } else {
@@ -308,13 +308,13 @@ void OctomapLayerProjector::insertCloudCallback( const sensor_msgs::PointCloud2:
   pcl::transformPointCloud(pc_nonground, pc_nonground, baseToWorld);
 
 
-//		// insert without pruning and 'dirty'
-//		geometry_msgs::Point sensorOrigin;
-//		tf::pointTFToMsg(trans.getOrigin(), sensorOrigin);
-//		m_octoMap.insertScan(transformed_cloud, sensorOrigin, m_maxRange, false, true);
-//		// TODO: eval which faster: "dirty" with updateInner?
-//		octree_->updateInnerOccupancy();
-//		octree_->prune();
+//              // insert without pruning and 'dirty'
+//              geometry_msgs::Point sensorOrigin;
+//              tf::pointTFToMsg(trans.getOrigin(), sensorOrigin);
+//              m_octoMap.insertScan(transformed_cloud, sensorOrigin, m_maxRange, false, true);
+//              // TODO: eval which faster: "dirty" with updateInner?
+//              octree_->updateInnerOccupancy();
+//              octree_->prune();
 //
 
   // instead of direct scan insertion, compute update to filter ground:
@@ -484,7 +484,13 @@ void OctomapLayerProjector::publishAll( const ros::Time& rostime )
   }
 
   ROS_DEBUG("Padded MinKey: %d %d %d / padded MaxKey: %d %d %d", paddedMinKey[0], paddedMinKey[1], paddedMinKey[2], paddedMaxKey[0], paddedMaxKey[1], paddedMaxKey[2]);
-  assert(paddedMaxKey[0] >= maxKey[0] && paddedMaxKey[1] >= maxKey[1]);
+  // BUG FIX: Replace assert with proper error handling to prevent crashes in production
+  // Check that padded keys are valid before proceeding
+  if(!(paddedMaxKey[0] >= maxKey[0] && paddedMaxKey[1] >= maxKey[1])){
+    ROS_ERROR("Invalid padded key dimensions: paddedMaxKey[0]=%d < maxKey[0]=%d or paddedMaxKey[1]=%d < maxKey[1]=%d", 
+              paddedMaxKey[0], maxKey[0], paddedMaxKey[1], maxKey[1]);
+    return;
+  }
 
   map.info.width = paddedMaxKey[0] - paddedMinKey[0] +1;
   map.info.height = paddedMaxKey[1] - paddedMinKey[1] +1;
@@ -498,7 +504,12 @@ void OctomapLayerProjector::publishAll( const ros::Time& rostime )
   temp_arm_map.info.height = paddedMaxKey[1] - paddedMinKey[1] +1;
   int mapOriginX = minKey[0] - paddedMinKey[0];
   int mapOriginY = minKey[1] - paddedMinKey[1];
-  assert(mapOriginX >= 0 && mapOriginY >= 0);
+  // BUG FIX: Replace assert with proper error handling to prevent crashes in production
+  // Validate map origin is within bounds before continuing
+  if(!(mapOriginX >= 0 && mapOriginY >= 0)){
+    ROS_ERROR("Invalid map origin: mapOriginX=%d or mapOriginY=%d is negative", mapOriginX, mapOriginY);
+    return;
+  }
 
   // might not exactly be min / max of octree:
   octomap::point3d origin;
@@ -635,7 +646,12 @@ void OctomapLayerProjector::publishAll( const ros::Time& rostime )
         //create marker:
         if (publishMarkerArray){
           int idx = int(log2(it.getSize() / lowestRes) +0.5);
-          assert (idx >= 0 && unsigned(idx) < occupiedNodesVis.markers.size());
+          // BUG FIX: Replace assert with proper error handling to prevent crashes in production
+          // Validate array index is within bounds before accessing
+          if(!(idx >= 0 && unsigned(idx) < occupiedNodesVis.markers.size())){
+            ROS_ERROR("Invalid marker index: idx=%d, markers.size()=%zu", idx, occupiedNodesVis.markers.size());
+            continue; // Skip this marker instead of crashing
+          }
           geometry_msgs::Point cubeCenter;
           cubeCenter.x = x;
           cubeCenter.y = y;
@@ -866,7 +882,7 @@ bool OctomapLayerProjector::clearBBXSrv(octomap_ros::ClearBBXRegionRequest& req,
   for(OcTreeROS::OcTreeType::leaf_bbx_iterator it = octree_->begin_leafs_bbx(min,max),
         end=octree_->end_leafs_bbx(); it!= end; ++it){
     it->setLogOdds(-2);
-//			octree_->updateNode(it.getKey(), -6.0f);
+//                      octree_->updateNode(it.getKey(), -6.0f);
   }
   octree_->updateInnerOccupancy();
 

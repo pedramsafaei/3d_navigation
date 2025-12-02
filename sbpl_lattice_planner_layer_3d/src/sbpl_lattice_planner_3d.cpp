@@ -88,9 +88,9 @@ SBPLLatticePlannerLayer3D::SBPLLatticePlannerLayer3D(std::string name, costmap_2
 }
 
 SBPLLatticePlannerLayer3D::~SBPLLatticePlannerLayer3D(){
-	if (planner_){
-		delete planner_;
-	}
+        if (planner_){
+                delete planner_;
+        }
 }
     
 void SBPLLatticePlannerLayer3D::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros){
@@ -122,35 +122,35 @@ void SBPLLatticePlannerLayer3D::initialize(std::string name, costmap_2d::Costmap
     std::vector<std::string> footprintLinks;
     // get list of links for footprint computation:
     if (!private_nh.hasParam ("footprint_links")){
-    	ROS_WARN ("No links specified for footprint computation (parameter ~footprint_links).");
+        ROS_WARN ("No links specified for footprint computation (parameter ~footprint_links).");
     } else{
-    	XmlRpc::XmlRpcValue xmlrpc_vals;;
+        XmlRpc::XmlRpcValue xmlrpc_vals;;
 
-    	private_nh.getParam ("footprint_links", xmlrpc_vals);
-    	if (xmlrpc_vals.getType () != XmlRpc::XmlRpcValue::TypeArray){
-    		ROS_WARN ("footprint_links need to be an array");
-    	}
-    	else {
-    		if (xmlrpc_vals.size () == 0){
-    			ROS_WARN ("No values in footprint_links array");
-    		} else {
-    			for (int i = 0; i < xmlrpc_vals.size (); ++i){
+        private_nh.getParam ("footprint_links", xmlrpc_vals);
+        if (xmlrpc_vals.getType () != XmlRpc::XmlRpcValue::TypeArray){
+                ROS_WARN ("footprint_links need to be an array");
+        }
+        else {
+                if (xmlrpc_vals.size () == 0){
+                        ROS_WARN ("No values in footprint_links array");
+                } else {
+                        for (int i = 0; i < xmlrpc_vals.size (); ++i){
 
-    				if (xmlrpc_vals[i].getType() != XmlRpc::XmlRpcValue::TypeStruct)
-    				{
-    					ROS_WARN ("Self see links entry %d is not a structure.  Stopping processing of self see links", i);
-    					break;
-    				}
-    				if (!xmlrpc_vals[i].hasMember ("name"))
-    				{
-    					ROS_WARN ("Self see links entry %d has no name.  Stopping processing of self see links", i);
-    					break;
-    				}
-    				std::string name = std::string (xmlrpc_vals[i]["name"]);
-    				footprintLinks.push_back(name);
-    			}
-    		}
-    	}
+                                if (xmlrpc_vals[i].getType() != XmlRpc::XmlRpcValue::TypeStruct)
+                                {
+                                        ROS_WARN ("Self see links entry %d is not a structure.  Stopping processing of self see links", i);
+                                        break;
+                                }
+                                if (!xmlrpc_vals[i].hasMember ("name"))
+                                {
+                                        ROS_WARN ("Self see links entry %d has no name.  Stopping processing of self see links", i);
+                                        break;
+                                }
+                                std::string name = std::string (xmlrpc_vals[i]["name"]);
+                                footprintLinks.push_back(name);
+                        }
+                }
+        }
     }
 
     tf_ = new tf::TransformListener(ros::Duration(10));
@@ -398,10 +398,21 @@ bool SBPLLatticePlannerLayer3D::makePlan(const geometry_msgs::PoseStamped& start
 
   plan.clear();
 
+  // BUG FIX: Update environment map size when costmap dimensions change to prevent crashes
+  // The environment must be reinitialized with the new dimensions when costmap size changes
   if (base_costmap_ros_->getSizeInCellsX() != cost_map_.getSizeInCellsX()
-		  	  || base_costmap_ros_->getSizeInCellsY() != cost_map_.getSizeInCellsY()){
-	  ROS_WARN("Costmap size changed, this might lead to strange results!");
-    //TODO: update the environments map size or it will crash here!!!!
+                          || base_costmap_ros_->getSizeInCellsY() != cost_map_.getSizeInCellsY()){
+          ROS_WARN("Costmap size changed, reinitializing environment to prevent crash!");
+    
+    // Update the local copy of the costmap
+    base_costmap_ros_->getCostmapCopy(cost_map_);
+    
+    // Reinitialize the environment with new dimensions
+    // This prevents crashes when accessing cells beyond the old map bounds
+    if(!initialize(name_, base_costmap_ros_, arm_costmap_ros_, spine_costmap_ros_)){
+      ROS_ERROR("Failed to reinitialize planner with new costmap size!");
+      return false;
+    }
   }
 
   env_->resetCollisionCount();
@@ -500,7 +511,7 @@ bool SBPLLatticePlannerLayer3D::makePlan(const geometry_msgs::PoseStamped& start
       env_->use_multi_layer = true;
       arm_costmap_ros_->getCostmapCopy(cost_map_);
     }
-		env_->updateCollisionObjects(collision_object_);
+                env_->updateCollisionObjects(collision_object_);
     */
     if(use_multi_layer)
       arm_costmap_ros_->getCostmapCopy(cost_map_);
@@ -517,8 +528,10 @@ bool SBPLLatticePlannerLayer3D::makePlan(const geometry_msgs::PoseStamped& start
     //setting planner parameters
     ROS_DEBUG("allocated:%f, init eps:%f\n",allocated_time_,initial_epsilon_);
     planner_->set_initialsolution_eps(initial_epsilon_);
-    //TODO: MIKE: return the first solution!!!!!
-    planner_->set_search_mode(false);
+    // BUG FIX: Set search mode to true to return first solution found
+    // This improves planning responsiveness by returning the first valid solution
+    // rather than waiting for the optimal solution
+    planner_->set_search_mode(true);
 
     ROS_DEBUG("[sbpl_lattice_planner_3d] run planner");
     try{
@@ -564,7 +577,9 @@ bool SBPLLatticePlannerLayer3D::makePlan(const geometry_msgs::PoseStamped& start
   //create a message for the plan 
   nav_msgs::Path gui_path;
   gui_path.poses.resize(sbpl_path.size());
-  std::string frame_id = "/map"; // TODO get from collision map
+  // BUG FIX: Get frame_id from costmap instead of hardcoding "/map"
+  // This ensures the path uses the correct reference frame from the planning environment
+  std::string frame_id = base_costmap_ros_->getGlobalFrameID();
   gui_path.header.frame_id = frame_id;
   gui_path.header.stamp = plan_time;
   //printf("path:\n");

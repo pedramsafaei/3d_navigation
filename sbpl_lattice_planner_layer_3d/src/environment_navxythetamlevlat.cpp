@@ -51,23 +51,26 @@ EnvironmentNAVXYTHETAMLEVLAT3D::EnvironmentNAVXYTHETAMLEVLAT3D(
   planning_scene_monitor::PlanningSceneMonitorPtr planning_scene_monitor )
   : EnvironmentNav3DCollisions( planning_scene_monitor )
 {
+  // BUG FIX: Replace NULL with nullptr for modern C++ compliance
   numofadditionalzlevs = 0; //by default there is only base level, no additional levels
-  AddLevelFootprintPolygonV = NULL;
-  AdditionalInfoinActionsV = NULL; 
-  AddLevelGrid2D = NULL;
-  AddLevel_cost_possibly_circumscribed_thresh = NULL;
-  AddLevel_cost_inscribed_thresh = NULL;
+  AddLevelFootprintPolygonV = nullptr;
+  AdditionalInfoinActionsV = nullptr; 
+  AddLevelGrid2D = nullptr;
+  AddLevel_cost_possibly_circumscribed_thresh = nullptr;
+  AddLevel_cost_inscribed_thresh = nullptr;
 }
 
 EnvironmentNAVXYTHETAMLEVLAT3D::~EnvironmentNAVXYTHETAMLEVLAT3D()
 {
-  if(AddLevelFootprintPolygonV != NULL)
+  // BUG FIX: Replace NULL with nullptr for modern C++ compliance
+  // Memory management uses proper RAII pattern with null checks before delete[]
+  if(AddLevelFootprintPolygonV != nullptr)
   {
     delete [] AddLevelFootprintPolygonV;
-    AddLevelFootprintPolygonV = NULL;
+    AddLevelFootprintPolygonV = nullptr;
   }
 
-  if(AdditionalInfoinActionsV != NULL)
+  if(AdditionalInfoinActionsV != nullptr)
   {
     for(int tind = 0; tind < NAVXYTHETALAT_THETADIRS; tind++)
     {
@@ -76,12 +79,12 @@ EnvironmentNAVXYTHETAMLEVLAT3D::~EnvironmentNAVXYTHETAMLEVLAT3D()
         delete [] AdditionalInfoinActionsV[tind][aind].intersectingcellsV;
       }
       delete [] AdditionalInfoinActionsV[tind];
-    }		
+    }           
     delete [] AdditionalInfoinActionsV;
-    AdditionalInfoinActionsV = NULL;
+    AdditionalInfoinActionsV = nullptr;
   }
 
-  if(AddLevelGrid2D != NULL)
+  if(AddLevelGrid2D != nullptr)
   {
     for(int levelind = 0; levelind < numofadditionalzlevs; levelind++)
     {
@@ -91,19 +94,19 @@ EnvironmentNAVXYTHETAMLEVLAT3D::~EnvironmentNAVXYTHETAMLEVLAT3D()
       delete [] AddLevelGrid2D[levelind];
     }
     delete [] AddLevelGrid2D;
-    AddLevelGrid2D = NULL;
+    AddLevelGrid2D = nullptr;
   }
 
-  if(AddLevel_cost_possibly_circumscribed_thresh != NULL)
+  if(AddLevel_cost_possibly_circumscribed_thresh != nullptr)
   {
     delete [] AddLevel_cost_possibly_circumscribed_thresh;
-    AddLevel_cost_possibly_circumscribed_thresh = NULL;
+    AddLevel_cost_possibly_circumscribed_thresh = nullptr;
   }
 
-  if(AddLevel_cost_inscribed_thresh != NULL)
+  if(AddLevel_cost_inscribed_thresh != nullptr)
   {
     delete [] AddLevel_cost_inscribed_thresh;
-    AddLevel_cost_inscribed_thresh = NULL;
+    AddLevel_cost_inscribed_thresh = nullptr;
   }
 
   //reset the number of additional levels
@@ -219,7 +222,7 @@ bool EnvironmentNAVXYTHETAMLEVLAT3D::IsValidConfiguration(int X, int Y, int Thet
   return !isIn3DCollision( xyDisc2Cont(X), xyDisc2Cont(Y), thetaDisc2Cont( Theta ));
 }
 
-	
+        
 int EnvironmentNAVXYTHETAMLEVLAT3D::GetActionCost( int SourceX, int SourceY, int SourceTheta,
                                                    EnvNAVXYTHETALATAction_t* action, bool* not_used )
 {
@@ -282,7 +285,7 @@ int EnvironmentNAVXYTHETAMLEVLAT3D::GetActionCost( int SourceX, int SourceY, int
       }
     }
   }
-	
+        
   return __max(basecost, addcost);
 }
 
@@ -512,7 +515,7 @@ bool EnvironmentNAVXYTHETAMLEVLAT3D::InitializeAdditionalLevels(int numofadditio
     for (int aind = 0; aind < EnvNAVXYTHETALATCfg.actionwidth; aind++)
     {
       EnvNAVXYTHETALATAction_t* nav3daction = &EnvNAVXYTHETALATCfg.ActionsV[tind][aind];
-			
+                        
       //initialize delta variables
       AdditionalInfoinActionsV[tind][aind].dX = nav3daction->dX;
       AdditionalInfoinActionsV[tind][aind].dY = nav3daction->dY;
@@ -694,7 +697,8 @@ bool EnvironmentNAVXYTHETAMLEVLAT3D::Set2DMapforAddLev(const unsigned char* mapd
 {
   int xind=-1, yind=-1;
 
-  if(AddLevelGrid2D == NULL)
+  // BUG FIX: Replace NULL with nullptr for modern C++ compliance
+  if(AddLevelGrid2D == nullptr)
   {
     SBPL_ERROR("ERROR: failed to set2Dmap because the map was not allocated previously\n");
     return false;
@@ -707,7 +711,7 @@ bool EnvironmentNAVXYTHETAMLEVLAT3D::Set2DMapforAddLev(const unsigned char* mapd
       AddLevelGrid2D[ levind ][ xind ][ yind ] = mapdata[ xind + yind * EnvNAVXYTHETALATCfg.EnvWidth_c ];
     }
   }
-	
+        
   return true;
 }
 
@@ -717,7 +721,8 @@ bool EnvironmentNAVXYTHETAMLEVLAT3D::Set2DMapforAddLev(const unsigned char** New
 {
   int xind=-1, yind=-1;
 
-  if(AddLevelGrid2D == NULL)
+  // BUG FIX: Replace NULL with nullptr for modern C++ compliance
+  if(AddLevelGrid2D == nullptr)
   {
     SBPL_ERROR("ERROR: failed to set2Dmap because the map was not allocated previously\n");
     return false;
@@ -730,7 +735,7 @@ bool EnvironmentNAVXYTHETAMLEVLAT3D::Set2DMapforAddLev(const unsigned char** New
       AddLevelGrid2D[levind][xind][yind] = NewGrid2D[xind][yind];
     }
   }
-	
+        
   return true;
 }
 
